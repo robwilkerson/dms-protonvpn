@@ -18,6 +18,10 @@ account management stay in Proton's own desktop app, which does them better.
 - **`python3`** — runs the US-state server selection helper. Already present
   wherever `proton-vpn-cli` is, since that CLI is written in Python.
 
+`proton-vpn-gtk-app` is **optional**. It's only the escape hatch for account
+management and the settings the CLI can't reach; when it isn't installed the
+"Open Proton VPN" button simply isn't shown.
+
 ## Bar
 
 The Proton VPN mark, themed to follow DMS: neutral when disconnected, your accent

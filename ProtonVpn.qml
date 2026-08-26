@@ -39,6 +39,12 @@ PluginComponent {
     // old state until the command returned.
     property bool desiredConnected: false
 
+    // The GTK app is optional: this plugin only needs the CLI. It's the escape
+    // hatch for account management and the settings the CLI can't reach, so when
+    // it isn't installed the button that opens it is simply absent. Checked once
+    // at startup — packages don't come and go mid-session.
+    property bool appInstalled: false
+
     // Proton's GTK app refuses the CLI *every* command while it is merely
     // running — status, info, connect, disconnect alike — so while it's up this
     // widget can still report state (nmcli is unaffected) but can't change it.
@@ -125,6 +131,12 @@ PluginComponent {
             if (root.pluginService)
                 root.pluginService.savePluginData(root.pluginId, "account", m[1]);
         }, 0, 20000);
+    }
+
+    function checkAppInstalled() {
+        Proc.runCommand("protonVpn-app-installed", ["sh", "-c", "command -v protonvpn-app >/dev/null"], function (output, exitCode) {
+            root.appInstalled = exitCode === 0;
+        });
     }
 
     function refreshStates() {
@@ -281,6 +293,7 @@ PluginComponent {
             root.account = pluginData.account;
         root.refreshStatus();
         root.refreshAccount();
+        root.checkAppInstalled();
         // Cheap (one local file read), and it makes the `state` IPC verb work
         // without the popout ever having been opened.
         root.refreshStates();
@@ -600,6 +613,7 @@ PluginComponent {
                     width: parent.width
                     text: "Open Proton VPN"
                     buttonHeight: 36
+                    visible: root.appInstalled
                     // Already open — nothing to launch.
                     enabled: !root.appRunning
                     onClicked: root.openApp()
