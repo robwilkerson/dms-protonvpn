@@ -278,6 +278,33 @@ PluginComponent {
         return "";
     }
 
+    function signOut() {
+        // Unlike `signin`, which needs an interactive password and 2FA prompt,
+        // `signout` is non-interactive, so the plugin can do it directly. It also
+        // terminates any live connection, which Proton handles for us.
+        if (root.busy || root.appRunning)
+            return;
+        root.busy = true;
+        root.desiredConnected = false;
+        root.lastError = "";
+        Proc.runCommand("protonVpn-signout", ["sh", "-c", "protonvpn signout 2>&1"], function (output, exitCode) {
+            root.busy = false;
+            root.noteFailure(output, exitCode, "Sign out");
+            if (output.indexOf("signed out") !== -1) {
+                root.account = "";
+                if (root.pluginService)
+                    root.pluginService.savePluginData(root.pluginId, "account", "");
+            }
+            root.refreshStatus();
+        }, 0, 60000);
+    }
+
+    // Account management is web-only; the CLI exposes nothing but the address.
+    function manageAccount() {
+        Quickshell.execDetached(["xdg-open", "https://account.proton.me"]);
+        root.closePopout();
+    }
+
     function openApp() {
         Quickshell.execDetached(["protonvpn-app"]);
         root.closePopout();
@@ -438,7 +465,7 @@ PluginComponent {
     popoutContent: Component {
         PopoutComponent {
             headerText: "Proton VPN"
-            detailsText: root.account || (root.appRunning ? "" : "Not signed in")
+            detailsText: ""
             showCloseButton: true
 
             Component.onCompleted: {
@@ -465,6 +492,62 @@ PluginComponent {
             Column {
                 width: parent.width
                 spacing: Theme.spacingM
+
+                // Account row: glyph + address, with the two account actions.
+                Item {
+                    width: parent.width
+                    height: 32
+
+                    DankIcon {
+                        id: acctGlyph
+                        anchors.left: parent.left
+                        anchors.leftMargin: Theme.spacingS
+                        anchors.verticalCenter: parent.verticalCenter
+                        name: "account_circle"
+                        size: 20
+                        color: Theme.surfaceVariantText
+                    }
+
+                    StyledText {
+                        anchors.left: acctGlyph.right
+                        anchors.leftMargin: Theme.spacingS
+                        anchors.right: acctActions.left
+                        anchors.rightMargin: Theme.spacingS
+                        anchors.verticalCenter: parent.verticalCenter
+                        elide: Text.ElideRight
+                        text: root.account || "Not signed in"
+                        color: root.account ? Theme.surfaceText : Theme.surfaceVariantText
+                    }
+
+                    Row {
+                        id: acctActions
+                        anchors.right: parent.right
+                        anchors.verticalCenter: parent.verticalCenter
+                        spacing: Theme.spacingXS
+                        visible: root.account !== ""
+
+                        DankActionButton {
+                            iconName: "open_in_new"
+                            iconColor: Theme.surfaceVariantText
+                            buttonSize: 28
+                            tooltipText: "Manage account"
+                            tooltipSide: "bottom"
+                            // A browser link, so it works even while the app owns
+                            // the CLI.
+                            onClicked: root.manageAccount()
+                        }
+
+                        DankActionButton {
+                            iconName: "logout"
+                            iconColor: Theme.surfaceVariantText
+                            buttonSize: 28
+                            tooltipText: "Sign out"
+                            tooltipSide: "bottom"
+                            enabled: !root.busy && !root.appRunning
+                            onClicked: root.signOut()
+                        }
+                    }
+                }
 
                 StyledText {
                     width: parent.width

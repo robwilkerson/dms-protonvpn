@@ -29,7 +29,11 @@ color when connected. No configuration.
 
 ## Popout
 
-- **Account** — the signed-in Proton address, as the subtitle.
+- **Account** — the signed-in Proton address, with buttons to manage the
+  account (opens account.proton.me, since the CLI exposes nothing but the
+  address) and to sign out. Signing out also drops any live connection.
+  Signing *in* isn't offered: `protonvpn signin` prompts for a password and
+  2FA token on a terminal, which a bar widget can't host.
 - **Connection** — state, the connected server name, and a toggle. Connecting
   uses Proton's own fastest-server selection. The toggle flips immediately and
   the label reports the transition (`Connecting…` / `Disconnecting…`), since a
