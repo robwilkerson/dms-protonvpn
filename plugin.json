@@ -1,0 +1,14 @@
+{
+    "id": "protonVpn",
+    "name": "Proton VPN",
+    "description": "Proton VPN status, connect, and disconnect from the dankbar. Settings and account management hand off to Proton's own app.",
+    "version": "0.1.0",
+    "author": "Rob Wilkerson",
+    "icon": "vpn_lock",
+    "type": "widget",
+    "capabilities": ["dankbar-widget", "vpn", "network"],
+    "component": "./ProtonVpn.qml",
+    "permissions": ["settings_read", "settings_write", "process"],
+    "requires_dms": ">=1.4.0",
+    "requires": ["protonvpn", "nmcli"]
+}
