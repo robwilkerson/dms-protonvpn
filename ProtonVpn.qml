@@ -76,6 +76,8 @@ PluginComponent {
         return connected ? "Connected" : "Disconnected";
     }
 
+    readonly property bool signedIn: account !== ""
+
     // The toggle shows intent while a command is in flight, so it flips the
     // instant it's clicked. If the command fails, `busy` clears and it snaps
     // back to the real state.
@@ -117,19 +119,25 @@ PluginComponent {
     // The account email is the popout subtitle. It never changes between
     // sign-ins, and `protonvpn info` is blocked whenever the GTK app is running,
     // so fetch it once and keep it.
-    function refreshAccount() {
-        // Persisted, so it survives a reload and is present at startup even when
-        // the app is open and the CLI won't answer. Asking while the app is open
-        // is guaranteed to fail, so don't.
-        if (root.account || root.appRunning)
+    // `force` re-asks even when an address is already cached — needed because the
+    // cache is persisted, so without it a sign-out that happened elsewhere would
+    // leave the old address on screen forever.
+    //
+    // Signed out, `info` prints `Account: 'None'` and still exits 0, so the test
+    // is whether the captured value looks like an address at all.
+    function refreshAccount(force) {
+        // Asking while the app is open is guaranteed to fail, so don't — and
+        // don't let that failure read as being signed out.
+        if (root.appRunning)
+            return;
+        if (root.account && !force)
             return;
         Proc.runCommand("protonVpn-info", ["sh", "-c", "protonvpn info 2>&1"], function (output, exitCode) {
             const m = output.match(/Account:\s*'([^']+)'/);
-            if (!m)
-                return;
-            root.account = m[1];
+            const value = m && m[1].indexOf("@") !== -1 ? m[1] : "";
+            root.account = value;
             if (root.pluginService)
-                root.pluginService.savePluginData(root.pluginId, "account", m[1]);
+                root.pluginService.savePluginData(root.pluginId, "account", value);
         }, 0, 20000);
     }
 
@@ -188,6 +196,12 @@ PluginComponent {
     function noteFailure(output, exitCode, label) {
         if (output.indexOf("desktop app is currently running") !== -1)
             root.lastError = "Quit the Proton VPN app first";
+        else if (output.indexOf("Please sign in") !== -1) {
+            root.lastError = "Sign in to Proton VPN first";
+            root.account = "";
+            if (root.pluginService)
+                root.pluginService.savePluginData(root.pluginId, "account", "");
+        }
         else if (exitCode !== 0)
             root.lastError = label + " failed";
     }
@@ -319,7 +333,7 @@ PluginComponent {
         if (pluginData && pluginData.account)
             root.account = pluginData.account;
         root.refreshStatus();
-        root.refreshAccount();
+        root.refreshAccount(true);
         root.checkAppInstalled();
         // Cheap (one local file read), and it makes the `state` IPC verb work
         // without the popout ever having been opened.
@@ -412,9 +426,10 @@ PluginComponent {
                 anchors.centerIn: parent
                 size: root.markSize
                 markColor: root.connected ? Theme.primary : Theme.widgetIconColor
-                // Status stays truthful while the app owns the CLI (nmcli is
-                // unaffected); dimming says "not controllable from here".
-                opacity: root.appRunning ? 0.45 : 1
+                // Dimmed whenever the plugin can't act — the app owning the CLI,
+                // or no signed-in account. The badge is reserved for the app case,
+                // since that one is resolved by closing something.
+                opacity: root.appRunning || !root.signedIn ? 0.45 : 1
             }
 
             DankIcon {
@@ -442,9 +457,10 @@ PluginComponent {
                 anchors.centerIn: parent
                 size: root.markSize
                 markColor: root.connected ? Theme.primary : Theme.widgetIconColor
-                // Status stays truthful while the app owns the CLI (nmcli is
-                // unaffected); dimming says "not controllable from here".
-                opacity: root.appRunning ? 0.45 : 1
+                // Dimmed whenever the plugin can't act — the app owning the CLI,
+                // or no signed-in account. The badge is reserved for the app case,
+                // since that one is resolved by closing something.
+                opacity: root.appRunning || !root.signedIn ? 0.45 : 1
             }
 
             DankIcon {
@@ -470,7 +486,7 @@ PluginComponent {
 
             Component.onCompleted: {
                 root.refreshStatus();
-                root.refreshAccount();
+                root.refreshAccount(true);
                 root.refreshStates();
                 root.refreshCountries();
             }
@@ -543,10 +559,25 @@ PluginComponent {
                             buttonSize: 28
                             tooltipText: "Sign out"
                             tooltipSide: "bottom"
-                            enabled: !root.busy && !root.appRunning
+                            enabled: !root.busy && !root.appRunning && root.signedIn
                             onClicked: root.signOut()
                         }
                     }
+                }
+
+                StyledText {
+                    width: parent.width
+                    visible: !root.signedIn && !root.appRunning
+                    wrapMode: Text.WordWrap
+                    // The account row already says "Not signed in"; this line is
+                    // only here to say what to do about it.
+                    text: root.appInstalled
+                        ? "Sign in with the Proton VPN app below, or run `protonvpn signin <user>`."
+                        : "Run `protonvpn signin <user>` in a terminal to sign in."
+                    font.pixelSize: Theme.fontSizeSmall
+                    font.weight: Font.Medium
+                    color: Theme.error
+                    leftPadding: Theme.spacingS
                 }
 
                 StyledText {
@@ -606,7 +637,7 @@ PluginComponent {
                             hideText: true
                             checked: root.toggleChecked
                             toggling: root.busy
-                            enabled: !root.appRunning
+                            enabled: !root.appRunning && root.signedIn
                             onToggled: root.toggleConnection()
                         }
                     }
@@ -653,7 +684,7 @@ PluginComponent {
                                 // over the bar. The country dropdown sits lower, so it
                                 // can afford more.
                                 maxPopupHeight: 170
-                                enabled: !root.busy && !root.appRunning
+                                enabled: !root.busy && !root.appRunning && root.signedIn
                                 onValueChanged: value => root.connectToState(value)
                             }
 
@@ -679,7 +710,7 @@ PluginComponent {
                                 // Same overlay constraint, plus 54px of search field
                                 // inside the popup.
                                 maxPopupHeight: 240
-                                enabled: !root.busy && !root.appRunning
+                                enabled: !root.busy && !root.appRunning && root.signedIn
                                 onValueChanged: value => root.connectToCountry(value)
                             }
 

@@ -27,13 +27,21 @@ management and the settings the CLI can't reach; when it isn't installed the
 The Proton VPN mark, themed to follow DMS: neutral when disconnected, your accent
 color when connected. No configuration.
 
+It dims whenever the plugin can't act — no signed-in account, or Proton's app
+holding the CLI — and adds a ⛔ badge only for the app case, since that one is
+fixed by closing something.
+
 ## Popout
 
 - **Account** — the signed-in Proton address, with buttons to manage the
   account (opens account.proton.me, since the CLI exposes nothing but the
   address) and to sign out. Signing out also drops any live connection.
   Signing *in* isn't offered: `protonvpn signin` prompts for a password and
-  2FA token on a terminal, which a bar widget can't host.
+  2FA token on a terminal, which a bar widget can't host. While signed out every
+  control is disabled except "Open Proton VPN", which is the way back in.
+  Detection is `info` printing `Account: 'None'` — it still exits 0, and
+  `status` looks identical signed in or out, so neither the exit code nor the
+  status line can be used.
 - **Connection** — state, the connected server name, and a toggle. Connecting
   uses Proton's own fastest-server selection. The toggle flips immediately and
   the label reports the transition (`Connecting…` / `Disconnecting…`), since a
