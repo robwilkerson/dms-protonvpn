@@ -39,6 +39,9 @@ fixed by closing something.
   Signing *in* isn't offered: `protonvpn signin` prompts for a password and
   2FA token on a terminal, which a bar widget can't host. While signed out every
   control is disabled except "Open Proton VPN", which is the way back in.
+  The address can't be read at all while the app is open, so if it was never
+  known the row says so rather than guessing; it's re-read the instant the
+  app exits.
   Detection is `info` printing `Account: 'None'` — it still exits 0, and
   `status` looks identical signed in or out, so neither the exit code nor the
   status line can be used.

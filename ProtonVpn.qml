@@ -83,6 +83,16 @@ PluginComponent {
     // back to the real state.
     readonly property bool toggleChecked: busy ? desiredConnected : connected
 
+    // The app monopolizes the CLI while it runs, so anything could have changed
+    // behind our back — signed in or out, connected elsewhere. The watcher fires
+    // the instant it exits, which is the earliest moment we can ask.
+    onAppRunningChanged: {
+        if (!root.appRunning) {
+            root.refreshAccount(true);
+            root.refreshStatus();
+        }
+    }
+
     function refreshStatus() {
         Proc.runCommand("protonVpn-status", ["sh", "-c", "nmcli -t -f NAME,DEVICE connection show --active"], function (output, exitCode) {
             if (exitCode !== 0) {
@@ -531,7 +541,11 @@ PluginComponent {
                         anchors.rightMargin: Theme.spacingS
                         anchors.verticalCenter: parent.verticalCenter
                         elide: Text.ElideRight
-                        text: root.account || "Not signed in"
+                        // While the app holds the CLI the account is genuinely
+                        // unknowable — `info` is refused and nothing else exposes
+                        // it — so say that rather than "Not signed in", which
+                        // would be a guess.
+                        text: root.account || (root.appRunning ? "Account unavailable while the app is open" : "Not signed in")
                         color: root.account ? Theme.surfaceText : Theme.surfaceVariantText
                     }
 
