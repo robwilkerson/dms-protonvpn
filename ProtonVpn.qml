@@ -39,6 +39,11 @@ PluginComponent {
     // old state until the command returned.
     property bool desiredConnected: false
 
+    // Proton's GTK app refuses the CLI *every* command while it is merely
+    // running — status, info, connect, disconnect alike — so while it's up this
+    // widget can still report state (nmcli is unaffected) but can't change it.
+    property bool appRunning: false
+
     // US state selection has to be computed locally — Proton's API has no state
     // tier, only the server name encodes it. See scripts/us-states.py.
     property var stateOptions: []
@@ -107,12 +112,18 @@ PluginComponent {
     // sign-ins, and `protonvpn info` is blocked whenever the GTK app is running,
     // so fetch it once and keep it.
     function refreshAccount() {
-        if (root.account)
+        // Persisted, so it survives a reload and is present at startup even when
+        // the app is open and the CLI won't answer. Asking while the app is open
+        // is guaranteed to fail, so don't.
+        if (root.account || root.appRunning)
             return;
         Proc.runCommand("protonVpn-info", ["sh", "-c", "protonvpn info 2>&1"], function (output, exitCode) {
             const m = output.match(/Account:\s*'([^']+)'/);
-            if (m)
-                root.account = m[1];
+            if (!m)
+                return;
+            root.account = m[1];
+            if (root.pluginService)
+                root.pluginService.savePluginData(root.pluginId, "account", m[1]);
         }, 0, 20000);
     }
 
@@ -260,12 +271,57 @@ PluginComponent {
         root.closePopout();
     }
 
+    onPluginDataChanged: {
+        if (!root.account && pluginData && pluginData.account)
+            root.account = pluginData.account;
+    }
+
     Component.onCompleted: {
+        if (pluginData && pluginData.account)
+            root.account = pluginData.account;
         root.refreshStatus();
         root.refreshAccount();
         // Cheap (one local file read), and it makes the `state` IPC verb work
         // without the popout ever having been opened.
         root.refreshStates();
+    }
+
+    // Why this exists: Proton deliberately forbids the app and the CLI running
+    // together, because both write the same single tunnel with no shared state —
+    // permitting it means split brain (observed: the app's tray offering
+    // "Connect" over a live CLI tunnel). So while the app is open the CLI refuses
+    // *every* command, and exits 0 while refusing. This plugin is a CLI front
+    // end, so an open app disables all of it.
+    //
+    // The app's session bus name is the tell. `gdbus monitor` prints current
+    // ownership when it starts and again on every change, so it needs no
+    // separate startup probe:
+    //   "...is owned by :1.848"     -> running
+    //   "...does not have an owner" -> not running
+    Process {
+        id: appWatcher
+
+        running: true
+        command: ["gdbus", "monitor", "--session", "--dest", "proton.vpn.app.gtk"]
+
+        stdout: SplitParser {
+            onRead: line => {
+                if (line.indexOf("is owned by") !== -1)
+                    root.appRunning = true;
+                else if (line.indexOf("does not have an owner") !== -1)
+                    root.appRunning = false;
+            }
+        }
+
+        // Nothing else knows this state, so a silent death would freeze it.
+        // Restart on a delay so a command that fails instantly can't spin.
+        onExited: watcherRestart.restart()
+    }
+
+    Timer {
+        id: watcherRestart
+        interval: 2000
+        onTriggered: appWatcher.running = true
     }
 
     IpcHandler {
@@ -316,6 +372,21 @@ PluginComponent {
                 anchors.centerIn: parent
                 size: root.markSize
                 markColor: root.connected ? Theme.primary : Theme.widgetIconColor
+                // Status stays truthful while the app owns the CLI (nmcli is
+                // unaffected); dimming says "not controllable from here".
+                opacity: root.appRunning ? 0.45 : 1
+            }
+
+            DankIcon {
+                visible: root.appRunning
+                name: "block"
+                filled: true
+                size: barIcon.size * 0.55
+                color: Theme.error
+                anchors.right: barIcon.right
+                anchors.bottom: barIcon.bottom
+                anchors.rightMargin: -2
+                anchors.bottomMargin: -2
             }
         }
     }
@@ -331,6 +402,21 @@ PluginComponent {
                 anchors.centerIn: parent
                 size: root.markSize
                 markColor: root.connected ? Theme.primary : Theme.widgetIconColor
+                // Status stays truthful while the app owns the CLI (nmcli is
+                // unaffected); dimming says "not controllable from here".
+                opacity: root.appRunning ? 0.45 : 1
+            }
+
+            DankIcon {
+                visible: root.appRunning
+                name: "block"
+                filled: true
+                size: barIconV.size * 0.55
+                color: Theme.error
+                anchors.right: barIconV.right
+                anchors.bottom: barIconV.bottom
+                anchors.rightMargin: -2
+                anchors.bottomMargin: -2
             }
         }
     }
@@ -339,7 +425,7 @@ PluginComponent {
     popoutContent: Component {
         PopoutComponent {
             headerText: "Proton VPN"
-            detailsText: root.account || "Not signed in"
+            detailsText: root.account || (root.appRunning ? "" : "Not signed in")
             showCloseButton: true
 
             Component.onCompleted: {
@@ -366,6 +452,19 @@ PluginComponent {
             Column {
                 width: parent.width
                 spacing: Theme.spacingM
+
+                StyledText {
+                    width: parent.width
+                    visible: root.appRunning
+                    wrapMode: Text.WordWrap
+                    text: "The Proton VPN app must be closed to use this plugin."
+                    font.pixelSize: Theme.fontSizeSmall
+                    font.weight: Font.Medium
+                    color: Theme.error
+                    // Line up with the account line above, which PopoutComponent
+                    // insets by spacingS. The cards below sit flush at 0.
+                    leftPadding: Theme.spacingS
+                }
 
                 // Connection card — the toggle connects to the fastest server
                 // anywhere, which is Proton's own default `connect` behavior.
@@ -411,6 +510,7 @@ PluginComponent {
                             hideText: true
                             checked: root.toggleChecked
                             toggling: root.busy
+                            enabled: !root.appRunning
                             onToggled: root.toggleConnection()
                         }
                     }
@@ -457,7 +557,7 @@ PluginComponent {
                                 // over the bar. The country dropdown sits lower, so it
                                 // can afford more.
                                 maxPopupHeight: 170
-                                enabled: !root.busy
+                                enabled: !root.busy && !root.appRunning
                                 onValueChanged: value => root.connectToState(value)
                             }
 
@@ -483,7 +583,7 @@ PluginComponent {
                                 // Same overlay constraint, plus 54px of search field
                                 // inside the popup.
                                 maxPopupHeight: 240
-                                enabled: !root.busy
+                                enabled: !root.busy && !root.appRunning
                                 onValueChanged: value => root.connectToCountry(value)
                             }
 
@@ -500,6 +600,8 @@ PluginComponent {
                     width: parent.width
                     text: "Open Proton VPN"
                     buttonHeight: 36
+                    // Already open — nothing to launch.
+                    enabled: !root.appRunning
                     onClicked: root.openApp()
                 }
             }

@@ -13,6 +13,8 @@ account management stay in Proton's own desktop app, which does them better.
 - **`proton-vpn-cli`** — the engine. On Fedora it comes from Proton's official
   RPM repo. Sign in once with `protonvpn signin`.
 - **NetworkManager (`nmcli`)** — used to read connection state.
+- **`gdbus`** (glib2) — watches for Proton's app opening, which disables the
+  widget's controls. Present on any GTK-era desktop.
 - **`python3`** — runs the US-state server selection helper. Already present
   wherever `proton-vpn-cli` is, since that CLI is written in Python.
 
@@ -31,7 +33,8 @@ color when connected. No configuration.
 - **US state** — connects to the fastest server in the chosen state.
 - **Country** — connects to the fastest server in the chosen country.
 - **Open Proton VPN** — launches Proton's app for everything this widget
-  deliberately doesn't do.
+  deliberately doesn't do. While that app is open the widget's controls are
+  disabled: the bar mark dims and gets a ⛔ badge, and the popout says so.
 
 ### Why states and countries work differently
 
@@ -64,6 +67,18 @@ This plugin instead treats the presence of the `proton0` device as the source of
 truth, which is accurate no matter what else is running. Commands that *write*
 (connect, disconnect) are matched on their message text, so a refusal surfaces in
 the popout as "Quit the Proton VPN app first" rather than failing silently.
+
+### While the app is open
+
+Proton forbids the two running together because both write the same tunnel with
+no shared state, so the CLI refuses *every* command — status, info, connect,
+disconnect alike. The widget detects this by watching the app's session bus name
+(`proton.vpn.app.gtk`) with `gdbus monitor`, which reports current ownership on
+start and every change after.
+
+Status keeps working throughout, because `nmcli` is unaffected. Only the controls
+go dead, so the widget dims the mark, badges it, and disables the toggle and
+dropdowns rather than letting you click into a guaranteed failure.
 
 The corollary: **the plugin owns the connection, so don't leave the desktop app
 running.** Quitting it tears down the tunnel, and it doesn't reconcile state on
