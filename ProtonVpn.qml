@@ -39,6 +39,11 @@ PluginComponent {
     // old state until the command returned.
     property bool desiredConnected: false
 
+    // `busy` covers any command in flight, which is what disables the controls.
+    // Only connect/disconnect should make the status line read as a transition —
+    // signing out is not "disconnecting".
+    property bool connectionOp: false
+
     // The GTK app is optional: this plugin only needs the CLI. It's the escape
     // hatch for account management and the settings the CLI can't reach, so when
     // it isn't installed the button that opens it is simply absent. Checked once
@@ -71,7 +76,7 @@ PluginComponent {
     readonly property real markSize: Math.round(root.iconSize * 0.8)
 
     readonly property string stateLabel: {
-        if (busy)
+        if (busy && connectionOp)
             return desiredConnected ? "Connecting…" : "Disconnecting…";
         return connected ? "Connected" : "Disconnected";
     }
@@ -81,7 +86,7 @@ PluginComponent {
     // The toggle shows intent while a command is in flight, so it flips the
     // instant it's clicked. If the command fails, `busy` clears and it snaps
     // back to the real state.
-    readonly property bool toggleChecked: busy ? desiredConnected : connected
+    readonly property bool toggleChecked: busy && connectionOp ? desiredConnected : connected
 
     // The app monopolizes the CLI while it runs, so anything could have changed
     // behind our back — signed in or out, connected elsewhere. The watcher fires
@@ -218,6 +223,7 @@ PluginComponent {
 
     function runProton(args, label, wantConnected) {
         root.busy = true;
+        root.connectionOp = true;
         root.desiredConnected = wantConnected;
         root.lastError = "";
         // Generous timeout: a connect can refresh the whole server list first.
@@ -254,6 +260,7 @@ PluginComponent {
         root.selectedState = display;
         root.selectedCountry = "";
         root.busy = true;
+        root.connectionOp = true;
         root.desiredConnected = true;
         root.lastError = "";
         Proc.runCommand("protonVpn-fastest", ["sh", "-c", "'" + root.statesScript + "' fastest " + code], function (output, exitCode) {
@@ -309,7 +316,7 @@ PluginComponent {
         if (root.busy || root.appRunning)
             return;
         root.busy = true;
-        root.desiredConnected = false;
+        root.connectionOp = false;
         root.lastError = "";
         Proc.runCommand("protonVpn-signout", ["sh", "-c", "protonvpn signout 2>&1"], function (output, exitCode) {
             root.busy = false;
@@ -598,7 +605,7 @@ PluginComponent {
                     width: parent.width
                     visible: root.appRunning
                     wrapMode: Text.WordWrap
-                    text: "The Proton VPN app must be closed to use this plugin."
+                    text: "Quit the Proton VPN app to use this plugin — closing its window leaves it running in the tray."
                     font.pixelSize: Theme.fontSizeSmall
                     font.weight: Font.Medium
                     color: Theme.error
