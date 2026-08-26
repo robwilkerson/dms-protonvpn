@@ -13,6 +13,8 @@ account management stay in Proton's own desktop app, which does them better.
 - **`proton-vpn-cli`** — the engine. On Fedora it comes from Proton's official
   RPM repo. Sign in once with `protonvpn signin`.
 - **NetworkManager (`nmcli`)** — used to read connection state.
+- **`python3`** — runs the US-state server selection helper. Already present
+  wherever `proton-vpn-cli` is, since that CLI is written in Python.
 
 ## Bar
 
@@ -23,7 +25,27 @@ color when connected. No configuration.
 
 - **Account** — the signed-in Proton address, as the subtitle.
 - **Connection** — state, the connected server name, and a toggle. Connecting
-  uses Proton's own fastest-server selection.
+  uses Proton's own fastest-server selection. The toggle flips immediately and
+  the label reports the transition (`Connecting…` / `Disconnecting…`), since a
+  connect takes several seconds.
+- **US state** — connects to the fastest server in the chosen state.
+- **Country** — connects to the fastest server in the chosen country.
+- **Open Proton VPN** — launches Proton's app for everything this widget
+  deliberately doesn't do.
+
+### Why states and countries work differently
+
+Countries are Proton's own feature: `protonvpn connect --country US` picks the
+server, and refreshes a stale server cache while doing it.
+
+States are not. Proton's API has no state tier — a state exists only inside the
+server *name* (`US-CO#416`) — so `scripts/us-states.py` computes the pick locally
+(lowest `Score` among enabled, in-tier servers, excluding Secure Core and Tor)
+and the widget connects to that server by name. The list of states offered is
+derived from the cache, so a state Proton doesn't serve simply never appears.
+
+The tradeoff: a state pick is only as fresh as `~/.cache/Proton/VPN/serverlist.json`,
+which only a Proton command refreshes. A country pick is always current.
 
 ## Why `nmcli` and not `protonvpn status`
 
@@ -85,6 +107,8 @@ rm -rf ~/.config/DankMaterialShell/plugins/protonVpn
 dms ipc call protonvpn status     # "Connected • US-GA#491"
 dms ipc call protonvpn toggle     # connect or disconnect
 dms ipc call protonvpn popout     # toggle the popout
+dms ipc call protonvpn state CO   # fastest server in a US state
+dms ipc call protonvpn country DE # fastest server in a country
 ```
 
 ## Notes
