@@ -3,4 +3,5 @@
 - [Proton VPN CLI and file surface](protonvpn-cli-and-file-surface.md) — Verified command list, output shapes, what `config` can and can't set, and where Proton keeps its caches and settings.
 - [Why all three proton-vpn packages stay](protonvpn-package-set.md) — The CLI needs the daemon by packaging, the GTK app is our settings escape hatch, and all three must be version-locked.
 - [Bar reorders orphan plugin pills](dms-bar-reorder-orphans-plugin-pills.md) — A DMS bar widget change can leave another plugin's pill loaded but blank, with clean logs and `[loaded]` status; `plugins reload <id>` is the fix.
+- [DMS ships its plugin API source](dms-plugin-api-source.md) — read `/usr/share/quickshell/dms/Modules/` to settle API questions; `WidgetHost` injects a widget's `pluginId` but `PluginSettings` requires the pane to declare its own.
 - [Replicating Proton's fastest-server pick](protonvpn-server-selection-replication.md) — The exact filter over `serverlist.json`, the `TOR=2` bitmask trap that silently drops all P2P servers, and why `Score`/`Load` go stale.
