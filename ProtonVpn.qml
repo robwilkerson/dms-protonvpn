@@ -25,6 +25,11 @@ import "./components"
 PluginComponent {
     id: root
 
+    // DankBar's WidgetHost assigns this from the configured widget id, so the
+    // literal is belt-and-braces. It keeps the id visible in the file that uses
+    // it, and matches what every other plugin declares.
+    pluginId: "protonVpn"
+
     readonly property int pollSeconds: parseInt(pluginData.pollSeconds) || 5
 
     property bool connected: false
@@ -513,7 +518,7 @@ PluginComponent {
                     iconName: "settings"
                     iconColor: Theme.surfaceVariantText
                     buttonSize: 28
-                    tooltipText: "Plugin settings"
+                    tooltipText: "Plugin Settings"
                     tooltipSide: "bottom"
                     onClicked: {
                         root.closePopout();
@@ -567,7 +572,7 @@ PluginComponent {
                             iconName: "open_in_new"
                             iconColor: Theme.surfaceVariantText
                             buttonSize: 28
-                            tooltipText: "Manage account"
+                            tooltipText: "Manage Account"
                             tooltipSide: "bottom"
                             // A browser link, so it works even while the app owns
                             // the CLI.
@@ -578,7 +583,7 @@ PluginComponent {
                             iconName: "logout"
                             iconColor: Theme.surfaceVariantText
                             buttonSize: 28
-                            tooltipText: "Sign out"
+                            tooltipText: "Sign Out"
                             tooltipSide: "bottom"
                             enabled: !root.busy && !root.appRunning && root.signedIn
                             onClicked: root.signOut()
@@ -669,7 +674,7 @@ PluginComponent {
                     spacing: Theme.spacingS
 
                     StyledText {
-                        text: "Connect through"
+                        text: "Connect Through"
                         font.pixelSize: Theme.fontSizeSmall
                         font.weight: Font.Medium
                         color: Theme.surfaceVariantText
@@ -694,7 +699,7 @@ PluginComponent {
                             DankDropdown {
                                 id: stateDropdown
                                 width: parent.width
-                                text: "US state"
+                                text: "US State"
                                 description: "Fastest in the state"
                                 options: root.stateOptions
                                 emptyText: "Select a state"
