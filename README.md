@@ -10,17 +10,33 @@ account management stay in Proton's own desktop app, which does them better.
 ## Prerequisites
 
 - **DankMaterialShell `>= 1.4.0`** — the shell that loads this plugin.
-- **`proton-vpn-cli`** — the engine. On Fedora it comes from Proton's official
-  RPM repo. Sign in once with `protonvpn signin`.
+- **`proton-vpn-cli` `>= 1.0.3`** — the engine, invoked as `protonvpn` on your
+  `PATH`. Install it from Proton's official package repo for your distribution
+  ([Fedora](https://protonvpn.com/support/official-linux-vpn-fedora/),
+  [Debian/Ubuntu](https://protonvpn.com/support/official-linux-vpn-ubuntu/)).
+  Earlier releases are unusable: 1.0.0 fails on import against current
+  `api-core`.
 - **NetworkManager (`nmcli`)** — used to read connection state.
 - **`gdbus`** (glib2) — watches for Proton's app opening, which disables the
   widget's controls. Present on any GTK-era desktop.
 - **`python3`** — runs the US-state server selection helper. Already present
   wherever `proton-vpn-cli` is, since that CLI is written in Python.
 
-`proton-vpn-gtk-app` is **optional**. It's only the escape hatch for account
-management and the settings the CLI can't reach; when it isn't installed the
-"Open Proton VPN" button simply isn't shown.
+**Take the desktop app too.** `proton-vpn-gtk-app` is technically optional; the
+plugin only ever launches it, and hides the "Open Proton VPN" button when it
+isn't there. But Proton's official repos ship it alongside the CLI, the two share
+credentials, and it's the escape hatch for account management and the settings
+the CLI can't reach. Installing both is the path of least resistance.
+
+**Signing in.** With the desktop app installed, sign in there once and the CLI
+picks it up; nothing further is needed. Without it, run `protonvpn signin` in a
+terminal, which prompts for a password and a 2FA token. A bar widget can't host
+that prompt, which is why the popout never offers sign-in.
+
+Keep the `proton-vpn-*` packages **version-locked as a set**. They all share
+`python3-proton-vpn-api-core`, and skew between them breaks the CLI with a Python
+import error rather than a clear message. Install the CLI and the desktop app
+from the same source, and update them together.
 
 ## Bar
 
@@ -55,7 +71,7 @@ fixed by closing something.
   deliberately doesn't do. While that app is open the widget's controls are
   disabled: the bar mark dims and gets a ⛔ badge, and the popout says so.
 
-### Why states and countries work differently
+### Why States and Countries Work Differently
 
 Countries are Proton's own feature: `protonvpn connect --country US` picks the
 server, and refreshes a stale server cache while doing it.
@@ -66,10 +82,11 @@ server *name* (`US-CO#416`) — so `scripts/us-states.py` computes the pick loca
 and the widget connects to that server by name. The list of states offered is
 derived from the cache, so a state Proton doesn't serve simply never appears.
 
-The tradeoff: a state pick is only as fresh as `~/.cache/Proton/VPN/serverlist.json`,
-which only a Proton command refreshes. A country pick is always current.
+The tradeoff: a state pick is only as fresh as Proton's own server cache
+(`$XDG_CACHE_HOME/Proton/VPN/serverlist.json`, defaulting to `~/.cache`), which
+only a Proton command refreshes. A country pick is always current.
 
-## Why `nmcli` and not `protonvpn status`
+## Why `nmcli` and Not `protonvpn status`
 
 The Proton CLI refuses to run while Proton's desktop app is open, and **exits 0
 while refusing**:
@@ -87,7 +104,7 @@ truth, which is accurate no matter what else is running. Commands that *write*
 (connect, disconnect) are matched on their message text, so a refusal surfaces in
 the popout as "Quit the Proton VPN app first" rather than failing silently.
 
-### While the app is open
+### While the App Is Open
 
 Proton forbids the two running together because both write the same tunnel with
 no shared state, so the CLI refuses *every* command — status, info, connect,
