@@ -31,7 +31,15 @@ import os
 import re
 import sys
 
-CACHE = os.path.expanduser("~/.cache/Proton/VPN/serverlist.json")
+# Proton's own packages honour XDG_CACHE_HOME, so resolve it rather than
+# hardcoding ~/.cache. A Flatpak install keeps its cache inside the sandbox at
+# ~/.var/app/com.protonvpn.www/cache/ instead; that path is deliberately not
+# consulted, because the directory outlives an uninstall and reading it would
+# silently serve stale server data from an app that is no longer there.
+CACHE = os.path.join(
+    os.environ.get("XDG_CACHE_HOME") or os.path.expanduser("~/.cache"),
+    "Proton/VPN/serverlist.json",
+)
 
 EXCLUDE_FEATURES = 1 | 2  # SECURE_CORE | TOR
 
