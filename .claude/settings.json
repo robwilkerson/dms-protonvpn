@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Read(SESSION_CONTEXT.md)",
+      "Edit(SESSION_CONTEXT.md)"
+    ]
+  }
+}

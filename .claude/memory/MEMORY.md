@@ -1,0 +1,6 @@
+- [Proton VPN CLI/GUI mutual exclusion](protonvpn-cli-gui-mutual-exclusion.md) — The CLI refuses to run while the GTK app is alive and exits 0 doing so; never trust its exit code, and never bypass the guard. This plugin's core architectural constraint.
+- [Closing the Proton app's window isn't quitting](protonvpn-app-window-close-is-not-quit.md) — It keeps running in the tray, still owns its bus name, and still blocks the CLI; looks exactly like a broken plugin.
+- [Proton VPN CLI and file surface](protonvpn-cli-and-file-surface.md) — Verified command list, output shapes, what `config` can and can't set, and where Proton keeps its caches and settings.
+- [Why all three proton-vpn packages stay](protonvpn-package-set.md) — The CLI needs the daemon by packaging, the GTK app is our settings escape hatch, and all three must be version-locked.
+- [Bar reorders orphan plugin pills](dms-bar-reorder-orphans-plugin-pills.md) — A DMS bar widget change can leave another plugin's pill loaded but blank, with clean logs and `[loaded]` status; `plugins reload <id>` is the fix.
+- [Replicating Proton's fastest-server pick](protonvpn-server-selection-replication.md) — The exact filter over `serverlist.json`, the `TOR=2` bitmask trap that silently drops all P2P servers, and why `Score`/`Load` go stale.
