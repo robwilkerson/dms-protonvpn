@@ -1,0 +1,146 @@
+# yaml-language-server: $schema=https://coderabbit.ai/integrations/schema.v2.json
+
+language: "en-US"
+tone_instructions: "Be direct and concise. Focus on correctness, security, architecture, idioms, and consistency."
+early_access: false
+
+reviews:
+  profile: "chill"
+  high_level_summary: true
+  high_level_summary_in_walkthrough: true
+  high_level_summary_instructions: >-
+    Create concise release notes as a bullet-point list, but only if the
+    original PR body is insufficient or inaccurate. Extend or clarify the
+    PR body content; don't duplicate it.
+  collapse_walkthrough: true
+  changed_files_summary: false
+  sequence_diagrams: false
+  request_changes_workflow: false
+  commit_status: true
+  review_status: false
+  poem: false
+  assess_linked_issues: true
+  related_issues: true
+  related_prs: true
+  suggested_labels: false
+  suggested_reviewers: false
+
+  path_instructions:
+    - path: "**/*.qml"
+      instructions: |
+        QML for a DankMaterialShell (Quickshell) dankbar plugin. DMS loads these
+        files at runtime; there is no build step and no test suite, so a mistake
+        here surfaces only as a silently broken widget. Scope is deliberately
+        narrow: status, connect, disconnect, plus state and country selection.
+        Flag anything that grows past those verbs. Review for:
+        - Imports of `qs.Common`, `qs.Services`, `qs.Widgets`, `qs.Modules.Plugins`
+          resolve ONLY inside the DMS runtime. Never suggest local stubs, module
+          paths, or vendoring them.
+        - Never branch on the `protonvpn` CLI's exit code. It exits 0 while
+          refusing to run because the GTK app is alive. State must come from
+          matching the message text or from `nmcli con show --active` (look for
+          `proton0`), which is authoritative.
+        - The CLI is the only writer. Never suggest `allow_concurrency` or any
+          other way around Proton's single-client guard.
+        - Colors, spacing, and radii must come from `Theme.*` tokens, never
+          literals. Bar content must be sized with `Theme.barIconSize(...)` /
+          `Theme.barTextSize(...)`, never a fixed `Theme.iconSize`, which renders
+          tiny at a non-default iconScale.
+        - The Proton mark in `components/ProtonVpnMark.qml` is a single-path
+          `PathSvg` glyph recolored through `markColor`. Reject any gradient or
+          baked-fill version; it would ignore the DMS theme.
+        - Proton's cache resolves through `XDG_CACHE_HOME` with a `~/.cache`
+          fallback. Never a hardcoded `~/.cache`, and never a Flatpak sandbox
+          path, which outlives an uninstall and serves stale data.
+        - Prefer DMS-provided widgets (`StyledText`, `DankIcon`, `PopoutComponent`,
+          `PluginComponent`) over hand-rolled equivalents.
+        - A settings pane must declare `pluginId` itself and it must match
+          `plugin.json`'s `id`. A wrong literal silently resolves against another
+          plugin with no error anywhere.
+        - Flag property bindings with side effects, and `Repeater` delegates
+          missing `required property` declarations.
+        - Duplicated markup across the bar pill and the popout should be factored
+          into a shared component rather than copied.
+    - path: "scripts/**/*.py"
+      instructions: |
+        Local US-state server selection. It replicates Proton's own
+        `ServerList.get_fastest_in_country` filter against the cached
+        `serverlist.json`, and a wrong filter is silent rather than loud.
+        Review for:
+        - Standard library only. The widget runs this with the system `python3`;
+          there is no environment to install into.
+        - The filter must stay faithful: `Features` is a bitmask where
+          SECURE_CORE=1 and TOR=2, so exclusion is `& 3`; the tier comes from the
+          cache's top-level `MaxTier`; enabled is exactly `Status == 1`; fastest
+          is `min(Score)`.
+        - Cache path resolves through `XDG_CACHE_HOME`, never a hardcoded
+          `~/.cache` and never a Flatpak sandbox path.
+        - A missing or unreadable cache must print nothing and exit non-zero so
+          the widget degrades to an empty list rather than a wrong answer.
+        - The widget invokes the script by path through its shebang, so the file
+          must stay executable and the shebang must stay `#!/usr/bin/env python3`.
+    - path: "plugin.json"
+      instructions: |
+        DMS plugin manifest. Review for:
+        - `id` must match the directory name DMS installs into; changing it is a
+          breaking rename for existing users.
+        - Every path in `component` and `settings` must point at a file that
+          exists. A stale path leaves the plugin unloadable with no clear error.
+        - `permissions` should be the minimum the widget actually uses.
+        - `requires` lists the executables the widget shells out to; it must
+          agree with what the QML actually invokes.
+        - `version` follows semver and is the source of truth for release tags.
+        - `requires_dms` must be bumped when the code starts depending on a newer
+          DMS API.
+    - path: "justfile"
+      instructions: |
+        Task runner for the dev loop. Review for:
+        - Shell recipes use `set -euo pipefail`.
+        - Recipes must never delete an installed plugin copy; move it aside so
+          local changes are recoverable, and stash it outside the config tree,
+          which may be a symlink into a dotfiles repo.
+        - No hardcoded home paths; honor `XDG_CONFIG_HOME` and `XDG_CACHE_HOME`
+          with `$HOME` fallbacks.
+        - `doctor` checks invariants that fail silently at runtime. A new silent
+          failure mode belongs there.
+    - path: "README.md"
+      instructions: |
+        User-facing documentation. Review for accuracy against `plugin.json`,
+        especially the plugin id in install instructions, the `requires_dms`
+        floor, and the version-lock across `proton-vpn-cli`, `proton-vpn-daemon`,
+        and `proton-vpn-gtk-app`. Any documented setting must actually exist.
+    - path: "{CLAUDE.md,.claude/**}"
+      instructions: |
+        Shared, committed working notes. Review for:
+        - Constraints stated here must agree with the code. A constraint the code
+          no longer honors, or a code change that violates one, is a finding.
+        - Nothing machine-specific: no host names, user names, credentials, or
+          paths that only resolve on one box.
+
+  auto_review:
+    enabled: true
+    auto_incremental_review: true
+    ignore_title_keywords:
+      - "WIP"
+      - "DO NOT MERGE"
+    # PRs open as drafts so the bot reviews before humans are requested.
+    drafts: true
+    base_branches:
+      - "main"
+
+  tools:
+    # No CI here, so there are no checks to wait on. Revisit if that changes.
+    github-checks:
+      enabled: false
+    shellcheck:
+      enabled: true
+    ruff:
+      enabled: true
+    markdownlint:
+      enabled: true
+
+  finishing_touches:
+    docstrings:
+      enabled: false
+    unit_tests:
+      enabled: false
