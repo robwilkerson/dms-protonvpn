@@ -129,6 +129,9 @@ reviews:
       - "main"
 
   tools:
+    # No CI here, so there are no checks to wait on. Revisit if that changes.
+    github-checks:
+      enabled: false
     shellcheck:
       enabled: true
     ruff:
