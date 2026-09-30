@@ -83,6 +83,12 @@ PluginComponent {
     property var countryCodes: ({})
     property string selectedCountry: ""
 
+    // The one Proton setting the popout exposes, because it changes with where
+    // you are rather than being set once. "" until `config list` has answered.
+    // The CLI can only set off or standard; the app's permanent mode reads as
+    // on here, and switching it off works.
+    property string killSwitch: ""
+
     readonly property string statesScript: Qt.resolvedUrl("scripts/us-states.py").toString().replace("file://", "")
 
     // Optical size correction. The Proton glyph fills its viewBox edge to edge,
@@ -111,6 +117,7 @@ PluginComponent {
         if (!root.appRunning) {
             root.refreshAccount(true);
             root.refreshStatus();
+            root.refreshKillSwitch();
         }
     }
 
@@ -182,6 +189,35 @@ PluginComponent {
         if (root.pluginService)
             root.pluginService.savePluginState(root.pluginId, "account", value);
     }
+
+    // A slow CLI call for a value that almost never changes, so it's read on the
+    // same occasions as the account rather than on the status poll.
+    function refreshKillSwitch() {
+        if (root.appRunning)
+            return;
+        Proc.runCommand("protonVpn-config", ["sh", "-c", "protonvpn config list 2>&1"], function (output, exitCode) {
+            // No row means the CLI refused; keep the last reading.
+            const m = output.match(/^kill-switch\s+(\S+)/m);
+            if (m)
+                root.killSwitch = m[1];
+        }, 0, 20000);
+    }
+
+    function setKillSwitch(on) {
+        if (root.busy || root.appRunning)
+            return;
+        root.busy = true;
+        root.connectionOp = false;
+        root.lastError = "";
+        Proc.runCommand("protonVpn-killswitch", ["sh", "-c", "protonvpn config set kill-switch " + (on ? "standard" : "off") + " 2>&1"], function (output, exitCode) {
+            root.busy = false;
+            if (output.indexOf("Kill switch has been set") === -1)
+                root.noteFailure(output, exitCode, "Kill switch");
+            root.refreshKillSwitch();
+        }, 0, 20000);
+    }
+
+    onAccountChanged: root.refreshKillSwitch()
 
     function checkAppInstalled() {
         Proc.runCommand("protonVpn-app-installed", ["sh", "-c", "command -v protonvpn-app >/dev/null"], function (output, exitCode) {
@@ -373,6 +409,7 @@ PluginComponent {
     Component.onCompleted: {
         root.refreshStatus();
         root.refreshAccount(true);
+        root.refreshKillSwitch();
         root.checkAppInstalled();
         // Cheap (one local file read), and it makes the `state` IPC verb work
         // without the popout ever having been opened.
@@ -526,6 +563,7 @@ PluginComponent {
             Component.onCompleted: {
                 root.refreshStatus();
                 root.refreshAccount(true);
+                root.refreshKillSwitch();
                 root.refreshStates();
                 root.refreshCountries();
             }
@@ -637,51 +675,107 @@ PluginComponent {
                 }
 
                 // Connection card — the toggle connects to the fastest server
-                // anywhere, which is Proton's own default `connect` behavior.
+                // anywhere, which is Proton's own default `connect` behavior. The
+                // kill switch shares the card because it guards this connection.
                 StyledRect {
                     width: parent.width
-                    height: 64
+                    height: connCard.implicitHeight
                     radius: Theme.cornerRadius
                     color: Theme.withAlpha(Theme.surfaceContainerHigh, 0.55)
 
                     Column {
-                        anchors.left: parent.left
-                        anchors.leftMargin: Theme.spacingM
-                        anchors.right: connControls.left
-                        anchors.rightMargin: Theme.spacingM
-                        anchors.verticalCenter: parent.verticalCenter
-                        spacing: 1
+                        id: connCard
+                        width: parent.width
 
-                        StyledText {
-                            text: root.stateLabel
-                            font.weight: Font.Medium
-                        }
-
-                        StyledText {
+                        Item {
                             width: parent.width
-                            elide: Text.ElideRight
-                            text: root.lastError || root.serverName || "Fastest server"
-                            font.pixelSize: Theme.fontSizeSmall
-                            color: root.lastError ? Theme.error : Theme.surfaceVariantText
+                            height: 64
+
+                            Column {
+                                anchors.left: parent.left
+                                anchors.leftMargin: Theme.spacingM
+                                anchors.right: connControls.left
+                                anchors.rightMargin: Theme.spacingM
+                                anchors.verticalCenter: parent.verticalCenter
+                                spacing: 1
+
+                                StyledText {
+                                    text: root.stateLabel
+                                    font.weight: Font.Medium
+                                }
+
+                                StyledText {
+                                    width: parent.width
+                                    elide: Text.ElideRight
+                                    text: root.lastError || root.serverName || "Fastest server"
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    color: root.lastError ? Theme.error : Theme.surfaceVariantText
+                                }
+                            }
+
+                            Item {
+                                id: connControls
+                                anchors.right: parent.right
+                                anchors.rightMargin: Theme.spacingM
+                                anchors.verticalCenter: parent.verticalCenter
+                                width: connToggle.width
+                                height: parent.height
+
+                                DankToggle {
+                                    id: connToggle
+                                    anchors.centerIn: parent
+                                    hideText: true
+                                    checked: root.toggleChecked
+                                    toggling: root.busy
+                                    enabled: !root.appRunning && root.signedIn
+                                    onToggled: root.toggleConnection()
+                                }
+                            }
                         }
-                    }
 
-                    Item {
-                        id: connControls
-                        anchors.right: parent.right
-                        anchors.rightMargin: Theme.spacingM
-                        anchors.verticalCenter: parent.verticalCenter
-                        width: connToggle.width
-                        height: parent.height
+                        Rectangle {
+                            x: Theme.spacingM
+                            width: parent.width - Theme.spacingM * 2
+                            height: 1
+                            color: Theme.outlineMedium
+                        }
 
-                        DankToggle {
-                            id: connToggle
-                            anchors.centerIn: parent
-                            hideText: true
-                            checked: root.toggleChecked
-                            toggling: root.busy
-                            enabled: !root.appRunning && root.signedIn
-                            onToggled: root.toggleConnection()
+                        Item {
+                            width: parent.width
+                            height: 56
+
+                            Column {
+                                anchors.left: parent.left
+                                anchors.leftMargin: Theme.spacingM
+                                anchors.right: killToggle.left
+                                anchors.rightMargin: Theme.spacingM
+                                anchors.verticalCenter: parent.verticalCenter
+                                spacing: 1
+
+                                StyledText {
+                                    text: "Kill Switch"
+                                    font.weight: Font.Medium
+                                }
+
+                                StyledText {
+                                    width: parent.width
+                                    elide: Text.ElideRight
+                                    text: "Block internet if the VPN drops"
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    color: Theme.surfaceVariantText
+                                }
+                            }
+
+                            DankToggle {
+                                id: killToggle
+                                anchors.right: parent.right
+                                anchors.rightMargin: Theme.spacingM
+                                anchors.verticalCenter: parent.verticalCenter
+                                hideText: true
+                                checked: root.killSwitch !== "" && root.killSwitch !== "off"
+                                enabled: !root.busy && !root.appRunning && root.signedIn && root.killSwitch !== ""
+                                onToggled: isChecked => root.setKillSwitch(isChecked)
+                            }
                         }
                     }
                 }

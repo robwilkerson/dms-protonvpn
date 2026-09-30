@@ -3,8 +3,9 @@
 A [DankMaterialShell](https://github.com/AvengeMedia/DankMaterialShell) dankbar
 widget for Proton VPN. Scope is deliberately narrow: **status, connect,
 disconnect**, plus state and country selection. Settings and account management
-hand off to Proton's own GTK app. When a feature request would grow this past
-those verbs, say so rather than building it.
+hand off to Proton's own GTK app. The kill switch is the one exception, because
+it changes with location; it is not precedent for NetShield and the rest. When a
+feature request would grow this past those verbs, say so rather than building it.
 
 ## Stack
 

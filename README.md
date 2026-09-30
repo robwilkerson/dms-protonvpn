@@ -5,7 +5,8 @@ widget for [Proton VPN](https://protonvpn.com). Shows connection state on the ba
 and connects or disconnects from a popout.
 
 Scope is deliberately narrow: **status, connect, disconnect**. Settings and
-account management stay in Proton's own desktop app, which does them better.
+account management stay in Proton's own desktop app, which does them better,
+except the kill switch.
 
 ## Prerequisites
 
@@ -65,6 +66,9 @@ fixed by closing something.
   uses Proton's own fastest-server selection. The toggle flips immediately and
   the label reports the transition (`Connecting…` / `Disconnecting…`), since a
   connect takes several seconds.
+- **Kill switch** — blocks internet if the tunnel drops. It's the one Proton
+  setting the popout exposes, because it changes with where you are. The CLI
+  can set only `off` and `standard`; the app's permanent mode stays in the app.
 - **US state** — connects to the fastest server in the chosen state. Shown by
   default only when your locale is US (or has no country); the plugin's
   settings pane overrides that either way.
