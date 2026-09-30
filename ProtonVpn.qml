@@ -66,6 +66,17 @@ PluginComponent {
     property var stateCodes: ({})
     property string selectedState: ""
 
+    // Irrelevant outside the US, so until the user picks in the settings pane it
+    // follows the locale. A locale with no country (C, POSIX) shows it, the
+    // behavior from before this was optional. ProtonVpnSettings.qml carries the
+    // same default for its toggle.
+    readonly property bool showStatePicker: {
+        if (pluginData.showStatePicker !== undefined)
+            return !!pluginData.showStatePicker;
+        const country = Qt.locale().name.split("_")[1];
+        return !country || country === "US";
+    }
+
     // Countries go straight to `connect --country`, so Proton picks the server
     // and refreshes its own cache while doing it.
     property var countryOptions: []
@@ -705,6 +716,7 @@ PluginComponent {
                             DankDropdown {
                                 id: stateDropdown
                                 width: parent.width
+                                visible: root.showStatePicker
                                 text: "US State"
                                 description: "Fastest in the state"
                                 options: root.stateOptions
@@ -740,8 +752,9 @@ PluginComponent {
                                 enableFuzzySearch: true
                                 emptyText: "Select a country"
                                 // Same overlay constraint, plus 54px of search field
-                                // inside the popup.
-                                maxPopupHeight: 240
+                                // inside the popup. With the state picker hidden this
+                                // takes the top slot, and the top slot's limit.
+                                maxPopupHeight: root.showStatePicker ? 240 : 170
                                 enabled: !root.busy && !root.appRunning && root.signedIn
                                 onValueChanged: value => root.connectToCountry(value)
                             }

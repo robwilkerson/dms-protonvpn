@@ -65,7 +65,9 @@ fixed by closing something.
   uses Proton's own fastest-server selection. The toggle flips immediately and
   the label reports the transition (`Connecting…` / `Disconnecting…`), since a
   connect takes several seconds.
-- **US state** — connects to the fastest server in the chosen state.
+- **US state** — connects to the fastest server in the chosen state. Shown by
+  default only when your locale is US (or has no country); the plugin's
+  settings pane overrides that either way.
 - **Country** — connects to the fastest server in the chosen country.
 - **Open Proton VPN** — launches Proton's app for everything this widget
   deliberately doesn't do. While that app is open the widget's controls are

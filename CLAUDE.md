@@ -21,14 +21,15 @@ convention here, not an accident. What exists:
 - `plugin.json` — manifest. Plugin id is `protonVpn`; the installed directory
   name must match the id.
 - `ProtonVpn.qml` — bar pill plus `popoutContent`. The whole widget.
+- `ProtonVpnSettings.qml` — the settings pane.
 - `components/ProtonVpnMark.qml` — the Proton glyph.
 - `scripts/us-states.py` — local state-tier server selection; see Hard
   constraints.
 - `justfile` — the dev loop.
 
-Conventional slots not yet used, which is where they go if they become needed: a
-`ProtonVpnSettings.qml` pane at the root, and `services/` plus a root `qmldir`
-for a singleton whose state must outlive the popout.
+A conventional slot not yet used, which is where it goes if it becomes needed:
+`services/` plus a root `qmldir` for a singleton whose state must outlive the
+popout.
 
 ## Hard Constraints
 
