@@ -14,13 +14,42 @@ Item {
     property real size: 24
     property color markColor: Theme.surfaceText
 
+    // Breathes while a connect or disconnect is in flight, since the color only
+    // changes once the tunnel does. Animates the Shape rather than the Item so
+    // it composes with whatever opacity the caller binds.
+    property bool pulsing: false
+
     // Source viewBox. The path is authored in these units and scaled to `size`.
     readonly property real viewBox: 24
 
     width: size
     height: size
 
+    SequentialAnimation {
+        running: logo.pulsing
+        loops: Animation.Infinite
+        // Settle back to full strength rather than freezing mid-fade.
+        onStopped: glyph.opacity = 1
+
+        NumberAnimation {
+            target: glyph
+            property: "opacity"
+            to: 0.35
+            duration: 600
+            easing.type: Easing.InOutSine
+        }
+
+        NumberAnimation {
+            target: glyph
+            property: "opacity"
+            to: 1
+            duration: 600
+            easing.type: Easing.InOutSine
+        }
+    }
+
     Shape {
+        id: glyph
         width: logo.viewBox
         height: logo.viewBox
         preferredRendererType: Shape.CurveRenderer

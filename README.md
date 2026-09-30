@@ -48,6 +48,9 @@ It dims whenever the plugin can't act — no signed-in account, or Proton's app
 holding the CLI — and adds a ⛔ badge only for the app case, since that one is
 fixed by closing something.
 
+Click opens the popout. Right-click connects to the fastest server, or
+disconnects, without opening anything; it does nothing while the mark is dimmed.
+
 ## Popout
 
 - **Account** — the signed-in Proton address, with buttons to manage the

@@ -501,6 +501,7 @@ PluginComponent {
                 id: barIcon
                 anchors.centerIn: parent
                 size: root.markSize
+                pulsing: root.busy && root.connectionOp
                 markColor: root.connected ? Theme.primary : Theme.widgetIconColor
                 // Dimmed whenever the plugin can't act — the app owning the CLI,
                 // or no signed-in account. The badge is reserved for the app case,
@@ -532,6 +533,7 @@ PluginComponent {
                 id: barIconV
                 anchors.centerIn: parent
                 size: root.markSize
+                pulsing: root.busy && root.connectionOp
                 markColor: root.connected ? Theme.primary : Theme.widgetIconColor
                 // Dimmed whenever the plugin can't act — the app owning the CLI,
                 // or no signed-in account. The badge is reserved for the app case,
@@ -551,6 +553,12 @@ PluginComponent {
                 anchors.bottomMargin: -2
             }
         }
+    }
+
+    // The popout toggle in one click. Same guards the toggle gets from `enabled`.
+    pillRightClickAction: () => {
+        if (!root.appRunning && root.signedIn)
+            root.toggleConnection();
     }
 
     popoutWidth: 400
