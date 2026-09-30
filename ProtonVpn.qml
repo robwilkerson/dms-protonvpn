@@ -153,12 +153,23 @@ PluginComponent {
         if (root.account && !force)
             return;
         Proc.runCommand("protonVpn-info", ["sh", "-c", "protonvpn info 2>&1"], function (output, exitCode) {
+            // No `Account:` line means `info` never answered: most often the
+            // app's refusal, which lands at startup before the watcher has
+            // reported the app running. Keep the cache rather than wipe it.
             const m = output.match(/Account:\s*'([^']+)'/);
-            const value = m && m[1].indexOf("@") !== -1 ? m[1] : "";
-            root.account = value;
-            if (root.pluginService)
-                root.pluginService.savePluginData(root.pluginId, "account", value);
+            if (!m)
+                return;
+            root.rememberAccount(m[1].indexOf("@") !== -1 ? m[1] : "");
         }, 0, 20000);
+    }
+
+    // The address is runtime state, not a setting, so it goes to DMS's plugin
+    // state file rather than plugin_settings.json. People keep the latter in
+    // dotfiles, where every sign-in would show up as a diff carrying their email.
+    function rememberAccount(value) {
+        root.account = value;
+        if (root.pluginService)
+            root.pluginService.savePluginState(root.pluginId, "account", value);
     }
 
     function checkAppInstalled() {
@@ -218,9 +229,7 @@ PluginComponent {
             root.lastError = "Quit the Proton VPN app first";
         else if (output.indexOf("Please sign in") !== -1) {
             root.lastError = "Sign in to Proton VPN first";
-            root.account = "";
-            if (root.pluginService)
-                root.pluginService.savePluginData(root.pluginId, "account", "");
+            root.rememberAccount("");
         }
         else if (exitCode !== 0)
             root.lastError = label + " failed";
@@ -326,11 +335,8 @@ PluginComponent {
         Proc.runCommand("protonVpn-signout", ["sh", "-c", "protonvpn signout 2>&1"], function (output, exitCode) {
             root.busy = false;
             root.noteFailure(output, exitCode, "Sign out");
-            if (output.indexOf("signed out") !== -1) {
-                root.account = "";
-                if (root.pluginService)
-                    root.pluginService.savePluginData(root.pluginId, "account", "");
-            }
+            if (output.indexOf("signed out") !== -1)
+                root.rememberAccount("");
             root.refreshStatus();
         }, 0, 60000);
     }
@@ -346,14 +352,14 @@ PluginComponent {
         root.closePopout();
     }
 
-    onPluginDataChanged: {
-        if (!root.account && pluginData && pluginData.account)
-            root.account = pluginData.account;
+    // WidgetHost assigns pluginService after Component.onCompleted, so the cached
+    // address can only be read from here.
+    onPluginServiceChanged: {
+        if (!root.account && root.pluginService)
+            root.account = root.pluginService.loadPluginState(root.pluginId, "account", "");
     }
 
     Component.onCompleted: {
-        if (pluginData && pluginData.account)
-            root.account = pluginData.account;
         root.refreshStatus();
         root.refreshAccount(true);
         root.checkAppInstalled();
