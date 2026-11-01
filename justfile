@@ -51,7 +51,7 @@ bootstrap:
 # Dev
 # ══════════════════════════════════════════════════════════════════════════════
 
-# Point the bar at this tree (start) or restore installed version (stop)
+# Point the bar at this tree (start) or install its committed HEAD (stop)
 [group('Dev')]
 develop action="start":
     #!/usr/bin/env bash
@@ -95,24 +95,25 @@ develop action="start":
         ;;
 
       stop)
-        if [ ! -L "$TARGET" ]; then
-            if [ -e "$TARGET" ]; then
-                echo "❌ $TARGET is a real directory, not a dev symlink." >&2
-                echo "   Refusing to touch it. Resolve by hand." >&2
-                exit 1
-            fi
-            echo "⚪ Not developing: $TARGET does not exist"
-            exit 0
+        if [ -e "$TARGET" ] && [ ! -L "$TARGET" ]; then
+            echo "❌ $TARGET is a real directory, not a dev symlink." >&2
+            echo "   Refusing to touch it. Resolve by hand." >&2
+            exit 1
         fi
-        rm "$TARGET"
+        # Installs what's committed, so uncommitted work would silently be
+        # left out. Commit or stash first.
+        if [ -n "$(git status --porcelain)" ]; then
+            echo "❌ Uncommitted changes in $REPO. Commit or stash, then re-run." >&2
+            exit 1
+        fi
+        rm -f "$TARGET"
+        mkdir -p "$TARGET"
+        git archive HEAD | tar -x -C "$TARGET"
+        echo "📦 Installed $(git rev-parse --short HEAD) to $TARGET"
+        # The copy displaced by start is older than what was just installed.
         if [ -e "$BACKUP" ]; then
-            mv "$BACKUP" "$TARGET"
-            echo "📦 Restored installed copy: $TARGET"
-        else
-            # Nothing was displaced when develop started, so removing the
-            # symlink leaves the plugin uninstalled rather than reverted.
-            echo "🔗 Removed dev symlink. No installed copy was displaced, so"
-            echo "   {{ PLUGIN_ID }} is now absent from $PLUGINS."
+            rm -rf "$BACKUP"
+            echo "🗑️  Discarded the copy start moved aside: $BACKUP"
         fi
         ;;
 
