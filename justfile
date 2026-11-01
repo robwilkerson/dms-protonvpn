@@ -56,7 +56,7 @@ bootstrap:
 develop action="start":
     #!/usr/bin/env bash
     set -euo pipefail
-    PLUGINS="${XDG_CONFIG_HOME:-$HOME/.config}/DankMaterialShell/plugins"
+    PLUGINS="${XDG_CONFIG_HOME:-$HOME/.config}/dms/plugins"
     TARGET="$PLUGINS/{{ PLUGIN_ID }}"
     # The displaced copy is stashed outside the config tree on purpose. That tree
     # is often a symlink into a dotfiles repo, with the installed copy tracked
@@ -131,7 +131,7 @@ develop action="start":
 status:
     #!/usr/bin/env bash
     set -euo pipefail
-    PLUGINS="${XDG_CONFIG_HOME:-$HOME/.config}/DankMaterialShell/plugins"
+    PLUGINS="${XDG_CONFIG_HOME:-$HOME/.config}/dms/plugins"
     TARGET="$PLUGINS/{{ PLUGIN_ID }}"
     REPO="$(git rev-parse --show-toplevel)"
 

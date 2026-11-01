@@ -136,12 +136,12 @@ its `connect_at_app_startup` and `start_app_minimized` settings off.
 
 ## Install
 
-DMS loads plugins from `~/.config/DankMaterialShell/plugins/`. Either clone this
+DMS loads plugins from `~/.config/dms/plugins/`. Either clone this
 repo directly into that directory:
 
 ```sh
 git clone git@github.com:robwilkerson/dms-protonvpn.git \
-  ~/.config/DankMaterialShell/plugins/protonVpn
+  ~/.config/dms/plugins/protonVpn
 ```
 
 or clone it anywhere and symlink it in:
@@ -149,7 +149,7 @@ or clone it anywhere and symlink it in:
 ```sh
 git clone git@github.com:robwilkerson/dms-protonvpn.git
 ln -s "$(pwd)/dms-protonvpn" \
-  ~/.config/DankMaterialShell/plugins/protonVpn
+  ~/.config/dms/plugins/protonVpn
 ```
 
 The directory name must match the plugin id, `protonVpn`. Then enable it on the
@@ -162,7 +162,7 @@ Remove it from the bar in Settings → Plugin Management (or delete its entry fr
 the bar's widget list in `settings.json`), then delete the plugin directory:
 
 ```sh
-rm -rf ~/.config/DankMaterialShell/plugins/protonVpn
+rm -rf ~/.config/dms/plugins/protonVpn
 ```
 
 ## IPC

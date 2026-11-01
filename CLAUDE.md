@@ -69,7 +69,7 @@ These were learned by breaking things. Do not rediscover them.
 No tests to run. Verify in the real shell. `just` wraps the whole loop; run
 `just` for the list and `just bootstrap` on a new machine.
 
-DMS loads plugins from `~/.config/DankMaterialShell/plugins/<id>`, never from
+DMS loads plugins from `~/.config/dms/plugins/<id>`, never from
 your clone. If that path is a real directory instead of a symlink to your working
 tree, the bar runs an independent copy and **silently ignores every edit**, with
 reload and restart both reporting success. `just develop start` makes the swap
@@ -77,7 +77,7 @@ and `just status` reports which copy is live; check it before debugging anything
 that looks like a change not taking effect.
 
 Adding the widget to a bar section is a settings-UI action — do not edit
-`~/.config/DankMaterialShell/settings.json` directly.
+`~/.config/dms/settings.json` directly.
 
 `just doctor` checks the invariants that fail silently at runtime: manifest paths
 that point at missing files, and `pluginId` literals that disagree with
@@ -115,7 +115,7 @@ Read the live Proton state from its own cache rather than guessing at shapes:
 `serverlist.json` and `connection/connection_persistence.json`, both under
 `$XDG_CACHE_HOME/Proton/VPN/` (defaulting to `~/.cache`).
 
-Your `~/.config/DankMaterialShell` may itself be a symlink into a dotfiles tree.
+Your `~/.config/dms` may itself be a symlink into a dotfiles tree.
 If so, anything written under `plugins/` lands inside that repo's working tree,
 which is worth knowing before a develop swap surprises you in `git status`.
 `just develop` keeps its backup in `~/.cache/` for exactly this reason.
