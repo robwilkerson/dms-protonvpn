@@ -24,7 +24,9 @@ Protocol: wireguard
 ```
 
 `Server:` is `<name> in <city>, <country>`. `protonvpn info` prints
-`Account: 'user@domain'`. `disconnect` prints `Disconnected.` with the period.
+`Account: 'user@domain'`. `disconnect` prints `Disconnected.` with the period,
+and **exits 1 when it actually tore down a tunnel** (0 when nothing was up;
+observed 2026-11-01). So exit codes mislead in both directions.
 `connect` prints the server and new IP, preceded by
 `Server list is outdated, updating...` when the cache is stale.
 
