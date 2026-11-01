@@ -66,7 +66,8 @@ disconnects, without opening anything; it does nothing while the mark is dimmed.
   `status` looks identical signed in or out, so neither the exit code nor the
   status line can be used.
 - **Connection** — state, the connected server name, and a toggle. Connecting
-  uses Proton's own fastest-server selection. The toggle flips immediately and
+  goes to the fastest server in your last picked state or country, or anywhere
+  if there's no pick; right-click on the bar does the same. The toggle flips immediately and
   the label reports the transition (`Connecting…` / `Disconnecting…`), since a
   connect takes several seconds.
 - **Kill switch** — blocks internet if the tunnel drops. It's the one Proton
@@ -76,6 +77,9 @@ disconnects, without opening anything; it does nothing while the mark is dimmed.
   default only when your locale is US (or has no country); the plugin's
   settings pane overrides that either way.
 - **Country** — connects to the fastest server in the chosen country.
+  The last state or country picked is remembered across restarts, in DMS's
+  plugin state rather than your settings. It shows as a chip beside "Connect
+  Through"; click the chip to clear it, without touching a live connection.
 - **Open Proton VPN** — launches Proton's app for everything this widget
   deliberately doesn't do. While that app is open the widget's controls are
   disabled: the bar mark dims and gets a ⛔ badge, and the popout says so.

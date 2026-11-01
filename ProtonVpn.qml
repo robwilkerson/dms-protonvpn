@@ -3,8 +3,9 @@
 // Bar: the Proton VPN mark. Themed neutral when disconnected, accent when
 // connected.
 //
-// Popout: account subtitle, a connection toggle for the fastest server overall,
-// dropdowns to pick a US state or a country, and a button to open Proton's own
+// Popout: account subtitle, a connection toggle for the fastest server (in the
+// last picked location, if any), dropdowns to pick a US state or a country, a
+// button to clear that pick, and a button to open Proton's own
 // app. Account management and the settings Proton doesn't expose to the CLI
 // stay in that app.
 //
@@ -64,7 +65,14 @@ PluginComponent {
     // tier, only the server name encodes it. See scripts/us-states.py.
     property var stateOptions: []
     property var stateCodes: ({})
-    property string selectedState: ""
+
+    // The last state or country picked, `{kind, code, name}` or null. Quick
+    // connect goes here instead of to the fastest server anywhere, and the
+    // dropdowns show it. Kept in plugin state alongside the account, for the
+    // same reason: it's runtime state, not a setting.
+    property var savedLocation: null
+    readonly property string selectedState: savedLocation && savedLocation.kind === "state" ? savedLocation.name : ""
+    readonly property string selectedCountry: savedLocation && savedLocation.kind === "country" ? savedLocation.name : ""
 
     // Irrelevant outside the US, so until the user picks in the settings pane it
     // follows the locale. A locale with no country (C, POSIX) shows it, the
@@ -81,7 +89,6 @@ PluginComponent {
     // and refreshes its own cache while doing it.
     property var countryOptions: []
     property var countryCodes: ({})
-    property string selectedCountry: ""
 
     // The one Proton setting the popout exposes, because it changes with where
     // you are rather than being set once. "" until `config list` has answered.
@@ -143,14 +150,6 @@ PluginComponent {
             }
             root.connected = found;
             root.serverName = found ? name : "";
-            // Nothing is connected, so no selector describes reality — including
-            // when the tunnel went down outside this widget (the CLI, the Proton
-            // app, a dropped link). Skip while a command is in flight, since a
-            // connect passes through "not connected" on its way up.
-            if (!found && !root.busy) {
-                root.selectedState = "";
-                root.selectedCountry = "";
-            }
         });
     }
 
@@ -296,16 +295,36 @@ PluginComponent {
         }, 0, 120000);
     }
 
-    // Exactly one of the three modes describes the live connection, so starting
-    // any of them clears the other selectors. Quick connect owns neither
-    // dropdown, so it clears both.
+    // Saved as soon as it's picked, not when the connect succeeds, so a pick
+    // made while a connect fails is still there for the next try.
+    function rememberLocation(kind, code, name) {
+        root.savedLocation = {
+            kind: kind,
+            code: code,
+            name: name || code
+        };
+        if (root.pluginService)
+            root.pluginService.savePluginState(root.pluginId, "location", root.savedLocation);
+    }
+
+    function forgetLocation() {
+        root.savedLocation = null;
+        if (root.pluginService)
+            root.pluginService.removePluginStateKey(root.pluginId, "location");
+    }
+
+    // Quick connect: the bar's right-click, the popout toggle, and the `toggle`
+    // IPC verb. Goes to the saved location if there is one.
     function toggleConnection() {
         if (root.busy)
             return;
-        root.selectedState = "";
-        root.selectedCountry = "";
+        const loc = root.savedLocation;
         if (root.connected)
             root.runProton("disconnect", "Disconnect", false);
+        else if (loc && loc.kind === "state")
+            root.connectToStateCode(loc.code, loc.name);
+        else if (loc && loc.kind === "country")
+            root.connectToCountryCode(loc.code, loc.name);
         else
             root.runProton("connect", "Connect", true);
     }
@@ -318,8 +337,7 @@ PluginComponent {
     function connectToStateCode(code, display) {
         if (!code || root.busy)
             return;
-        root.selectedState = display;
-        root.selectedCountry = "";
+        root.rememberLocation("state", code, display);
         root.busy = true;
         root.connectionOp = true;
         root.desiredConnected = true;
@@ -353,8 +371,7 @@ PluginComponent {
     function connectToCountryCode(code, display) {
         if (!code || root.busy)
             return;
-        root.selectedCountry = display;
-        root.selectedState = "";
+        root.rememberLocation("country", code, display);
         root.runProton("connect --country " + code, "Connect", true);
     }
 
@@ -399,11 +416,15 @@ PluginComponent {
         root.closePopout();
     }
 
-    // WidgetHost assigns pluginService after Component.onCompleted, so the cached
-    // address can only be read from here.
+    // WidgetHost assigns pluginService after Component.onCompleted, so plugin
+    // state can only be read from here.
     onPluginServiceChanged: {
-        if (!root.account && root.pluginService)
+        if (!root.pluginService)
+            return;
+        if (!root.account)
             root.account = root.pluginService.loadPluginState(root.pluginId, "account", "");
+        if (!root.savedLocation)
+            root.savedLocation = root.pluginService.loadPluginState(root.pluginId, "location", null);
     }
 
     Component.onCompleted: {
@@ -715,7 +736,7 @@ PluginComponent {
                                 StyledText {
                                     width: parent.width
                                     elide: Text.ElideRight
-                                    text: root.lastError || root.serverName || "Fastest server"
+                                    text: root.lastError || root.serverName || (root.savedLocation ? "Fastest in " + root.savedLocation.name : "Fastest server")
                                     font.pixelSize: Theme.fontSizeSmall
                                     color: root.lastError ? Theme.error : Theme.surfaceVariantText
                                 }
@@ -792,11 +813,61 @@ PluginComponent {
                     width: parent.width
                     spacing: Theme.spacingS
 
-                    StyledText {
-                        text: "Connect Through"
-                        font.pixelSize: Theme.fontSizeSmall
-                        font.weight: Font.Medium
-                        color: Theme.surfaceVariantText
+                    Item {
+                        width: parent.width
+                        height: Math.max(connectThroughLabel.implicitHeight, clearLocation.visible ? clearLocation.height : 0)
+
+                        StyledText {
+                            id: connectThroughLabel
+                            anchors.left: parent.left
+                            anchors.verticalCenter: parent.verticalCenter
+                            text: "Connect Through"
+                            font.pixelSize: Theme.fontSizeSmall
+                            font.weight: Font.Medium
+                            color: Theme.surfaceVariantText
+                        }
+
+                        // The saved pick as a removable chip. Clicking it drops the
+                        // pick so quick connect goes back to the fastest server
+                        // anywhere. Leaves a live tunnel alone.
+                        StyledRect {
+                            id: clearLocation
+                            anchors.right: parent.right
+                            anchors.verticalCenter: parent.verticalCenter
+                            visible: root.savedLocation !== null
+                            width: chipRow.implicitWidth + Theme.spacingS * 2
+                            height: chipRow.implicitHeight + Theme.spacingXS * 2
+                            radius: height / 2
+                            color: chipMouse.containsMouse ? Theme.primaryPressed : Theme.primaryHover
+
+                            Row {
+                                id: chipRow
+                                anchors.centerIn: parent
+                                spacing: Theme.spacingXS
+
+                                StyledText {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    text: root.savedLocation ? root.savedLocation.name : ""
+                                    font.pixelSize: Theme.fontSizeSmall
+                                    color: Theme.primary
+                                }
+
+                                DankIcon {
+                                    anchors.verticalCenter: parent.verticalCenter
+                                    name: "close"
+                                    size: Theme.fontSizeSmall + 2
+                                    color: Theme.primary
+                                }
+                            }
+
+                            MouseArea {
+                                id: chipMouse
+                                anchors.fill: parent
+                                hoverEnabled: true
+                                cursorShape: Qt.PointingHandCursor
+                                onClicked: root.forgetLocation()
+                            }
+                        }
                     }
 
                     StyledRect {
