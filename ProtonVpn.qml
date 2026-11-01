@@ -20,6 +20,7 @@ import Quickshell.Io
 import qs.Common
 import qs.Services
 import qs.Widgets
+import qs.DCommon.Widgets
 import qs.Modules.Plugins
 import "./components"
 
@@ -530,7 +531,7 @@ PluginComponent {
                 opacity: root.appRunning || !root.signedIn ? 0.45 : 1
             }
 
-            DankIcon {
+            DIcon {
                 visible: root.appRunning
                 name: "block"
                 filled: true
@@ -562,7 +563,7 @@ PluginComponent {
                 opacity: root.appRunning || !root.signedIn ? 0.45 : 1
             }
 
-            DankIcon {
+            DIcon {
                 visible: root.appRunning
                 name: "block"
                 filled: true
@@ -598,7 +599,7 @@ PluginComponent {
             }
 
             headerActions: Component {
-                DankActionButton {
+                DActionButton {
                     iconName: "settings"
                     iconColor: Theme.surfaceVariantText
                     buttonSize: 28
@@ -620,7 +621,7 @@ PluginComponent {
                     width: parent.width
                     height: 32
 
-                    DankIcon {
+                    DIcon {
                         id: acctGlyph
                         anchors.left: parent.left
                         anchors.leftMargin: Theme.spacingS
@@ -652,7 +653,7 @@ PluginComponent {
                         spacing: Theme.spacingXS
                         visible: root.account !== ""
 
-                        DankActionButton {
+                        DActionButton {
                             iconName: "open_in_new"
                             iconColor: Theme.surfaceVariantText
                             buttonSize: 28
@@ -663,7 +664,7 @@ PluginComponent {
                             onClicked: root.manageAccount()
                         }
 
-                        DankActionButton {
+                        DActionButton {
                             iconName: "logout"
                             iconColor: Theme.surfaceVariantText
                             buttonSize: 28
@@ -750,7 +751,7 @@ PluginComponent {
                                 width: connToggle.width
                                 height: parent.height
 
-                                DankToggle {
+                                DToggle {
                                     id: connToggle
                                     anchors.centerIn: parent
                                     hideText: true
@@ -795,7 +796,7 @@ PluginComponent {
                                 }
                             }
 
-                            DankToggle {
+                            DToggle {
                                 id: killToggle
                                 anchors.right: parent.right
                                 anchors.rightMargin: Theme.spacingM
@@ -852,7 +853,7 @@ PluginComponent {
                                     color: Theme.primary
                                 }
 
-                                DankIcon {
+                                DIcon {
                                     anchors.verticalCenter: parent.verticalCenter
                                     name: "close"
                                     size: Theme.fontSizeSmall + 2
@@ -886,7 +887,7 @@ PluginComponent {
                             anchors.margins: Theme.spacingM
                             spacing: Theme.spacingS
 
-                            DankDropdown {
+                            DDropdown {
                                 id: stateDropdown
                                 width: parent.width
                                 visible: root.showStatePicker
@@ -894,7 +895,7 @@ PluginComponent {
                                 description: "Fastest in the state"
                                 options: root.stateOptions
                                 emptyText: "Select a state"
-                                // DankDropdown parents its popup to the popout's own
+                                // DDropdown parents its popup to the popout's own
                                 // overlay and flips it upward when it won't fit below,
                                 // placing it at `triggerY - popupHeight - 4`. Anything
                                 // much taller than this lands at a negative y and spills
@@ -905,7 +906,7 @@ PluginComponent {
                                 onValueChanged: value => root.connectToState(value)
                             }
 
-                            // DankDropdown assigns its own `currentValue` on selection,
+                            // DDropdown assigns its own `currentValue` on selection,
                             // which would clobber a plain binding and leave the widget
                             // stuck on a stale label once the other mode takes over. A
                             // Binding survives that write, so clearing the selection
@@ -916,7 +917,7 @@ PluginComponent {
                                 value: root.selectedState
                             }
 
-                            DankDropdown {
+                            DDropdown {
                                 id: countryDropdown
                                 width: parent.width
                                 text: "Country"
@@ -941,7 +942,7 @@ PluginComponent {
                     }
                 }
 
-                DankButton {
+                DButton {
                     width: parent.width
                     text: "Open Proton VPN"
                     buttonHeight: 36
