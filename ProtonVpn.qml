@@ -212,7 +212,7 @@ PluginComponent {
         Proc.runCommand("protonVpn-killswitch", ["sh", "-c", "protonvpn config set kill-switch " + (on ? "standard" : "off") + " 2>&1"], function (output, exitCode) {
             root.busy = false;
             if (output.indexOf("Kill switch has been set") === -1)
-                root.noteFailure(output, exitCode, "Kill switch");
+                root.noteFailure(output, "Kill switch");
             root.refreshKillSwitch();
         }, 0, 20000);
     }
@@ -269,19 +269,23 @@ PluginComponent {
         }, 0, 60000);
     }
 
-    // Exit codes are useless for Proton commands — the GUI-running refusal also
-    // exits 0 — so failures are matched on message text.
-    function noteFailure(output, exitCode, label) {
+    // Exit codes are useless for Proton commands in both directions: the
+    // GUI-running refusal exits 0, and a disconnect that works exits 1. So
+    // callers decide success from the message text and call this only when it's
+    // missing; this just picks the most helpful thing to say.
+    function noteFailure(output, label) {
         if (output.indexOf("desktop app is currently running") !== -1)
             root.lastError = "Quit the Proton VPN app first";
         else if (output.indexOf("Please sign in") !== -1) {
             root.lastError = "Sign in to Proton VPN first";
             root.rememberAccount("");
         }
-        else if (exitCode !== 0)
+        else
             root.lastError = label + " failed";
     }
 
+    // `connect` prints "Connected to <server>…"; `disconnect` prints
+    // "Disconnected." even when nothing was up.
     function runProton(args, label, wantConnected) {
         root.busy = true;
         root.connectionOp = true;
@@ -290,7 +294,8 @@ PluginComponent {
         // Generous timeout: a connect can refresh the whole server list first.
         Proc.runCommand("protonVpn-connect", ["sh", "-c", "protonvpn " + args + " 2>&1"], function (output, exitCode) {
             root.busy = false;
-            root.noteFailure(output, exitCode, label);
+            if (output.indexOf(wantConnected ? "Connected to" : "Disconnected.") === -1)
+                root.noteFailure(output, label);
             root.refreshStatus();
             root.refreshAccount();
         }, 0, 120000);
@@ -399,9 +404,10 @@ PluginComponent {
         root.lastError = "";
         Proc.runCommand("protonVpn-signout", ["sh", "-c", "protonvpn signout 2>&1"], function (output, exitCode) {
             root.busy = false;
-            root.noteFailure(output, exitCode, "Sign out");
             if (output.indexOf("signed out") !== -1)
                 root.rememberAccount("");
+            else
+                root.noteFailure(output, "Sign out");
             root.refreshStatus();
         }, 0, 60000);
     }
