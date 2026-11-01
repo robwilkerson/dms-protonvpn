@@ -10,7 +10,7 @@ except the kill switch.
 
 ## Prerequisites
 
-- **DankMaterialShell `>= 1.4.0`** — the shell that loads this plugin.
+- **DankMaterialShell `>= 2.0.0`** — the shell that loads this plugin.
 - **`proton-vpn-cli` `>= 1.0.3`** — the engine, invoked as `protonvpn` on your
   `PATH`. Install it from Proton's official package repo for your distribution
   ([Fedora](https://protonvpn.com/support/official-linux-vpn-fedora/),

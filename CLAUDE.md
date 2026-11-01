@@ -11,7 +11,7 @@ feature request would grow this past those verbs, say so rather than building it
 
 QML (Qt 6 / Quickshell) only. No build step, no package manager, no test
 framework. The engine is the `protonvpn` CLI (`proton-vpn-cli >= 1.0.3`) from
-Proton's official package repo; DMS `>= 1.4.0` loads the plugin. `just` runs the
+Proton's official package repo; DMS `>= 2.0.0` loads the plugin. `just` runs the
 dev loop and `python3` runs the one helper script.
 
 ## Structure
